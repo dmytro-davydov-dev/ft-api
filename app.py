@@ -16,8 +16,21 @@ def create_app() -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
 
-    # CORS — restrict origins in prod via ALLOWED_ORIGINS env var.
-    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+    # CORS — allowed origins.
+    # Dev default: Firebase Hosting dev URLs + local Vite dev server.
+    # Override in prod via ALLOWED_ORIGINS env var (comma-separated list).
+    _dev_origins = [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://flowterra-dev.firebaseapp.com",
+        "https://flowterra-dev.web.app",
+    ]
+    raw_origins = os.environ.get("ALLOWED_ORIGINS", "")
+    allowed_origins = (
+        [o.strip() for o in raw_origins.split(",") if o.strip()]
+        if raw_origins
+        else _dev_origins
+    )
     CORS(app, origins=allowed_origins)
 
     # Initialise Firebase Admin SDK once per process.
