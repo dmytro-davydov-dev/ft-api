@@ -84,7 +84,7 @@ jobs:
             --min-instances 0 \
             --max-instances 5 \
             --port 8080 \
-            --no-allow-unauthenticated \
+            --allow-unauthenticated \
             --quiet
 
       - name: Show service URL
