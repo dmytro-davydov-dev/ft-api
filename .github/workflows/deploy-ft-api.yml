@@ -1,0 +1,92 @@
+# Deploy ft-api to Cloud Run (flowterra-dev, europe-west1)
+#
+# Triggers on push to main.  Prod deployment is gated by the
+# "production" GitHub Environment (requires manual approval).
+#
+# Prerequisites (set in GitHub → Settings → Secrets / Variables):
+#   Secrets:
+#     GCP_SA_KEY_DEV   — Service account JSON key with roles:
+#                        run.admin, artifactregistry.writer,
+#                        iam.serviceAccountUser, storage.admin
+#   Variables:
+#     GCP_PROJECT_DEV  — flowterra-dev
+#     GCP_REGION       — europe-west1
+#
+# NOTE: Replace GCP_SA_KEY_DEV with Workload Identity Federation
+# once the WIF pool is provisioned in flowterra-dev (Phase 3 hardening).
+
+name: Deploy ft-api
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ft-api/**"
+      - ".github/workflows/deploy-ft-api.yml"
+
+env:
+  SERVICE_NAME: ft-api
+  REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_DEV || 'flowterra-dev' }}
+  IMAGE: europe-west1-docker.pkg.dev/${{ vars.GCP_PROJECT_DEV || 'flowterra-dev' }}/flowterra/ft-api
+
+jobs:
+  deploy:
+    name: Build & Deploy (dev)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required when switching to WIF
+
+    defaults:
+      run:
+        working-directory: ft-api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
+          # TODO(Phase 3 hardening): replace with WIF:
+          # workload_identity_provider: ${{ secrets.WIF_PROVIDER_DEV }}
+          # service_account: ${{ secrets.WIF_SA_DEV }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
+
+      - name: Build & push container image
+        run: |
+          docker build \
+            --tag "${{ env.IMAGE }}:${{ github.sha }}" \
+            --tag "${{ env.IMAGE }}:latest" \
+            .
+          docker push "${{ env.IMAGE }}:${{ github.sha }}"
+          docker push "${{ env.IMAGE }}:latest"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "${{ env.IMAGE }}:${{ github.sha }}" \
+            --project "${{ env.PROJECT_ID }}" \
+            --region "${{ env.REGION }}" \
+            --platform managed \
+            --cpu 1 \
+            --memory 512Mi \
+            --min-instances 0 \
+            --max-instances 5 \
+            --port 8080 \
+            --no-allow-unauthenticated \
+            --quiet
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --project "${{ env.PROJECT_ID }}" \
+            --region "${{ env.REGION }}" \
+            --format "value(status.url)"
