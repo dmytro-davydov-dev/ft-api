@@ -20,9 +20,6 @@ name: Deploy ft-api
 on:
   push:
     branches: [main]
-    paths:
-      - "ft-api/**"
-      - ".github/workflows/deploy-ft-api.yml"
 
 env:
   SERVICE_NAME: ft-api
@@ -37,10 +34,6 @@ jobs:
     permissions:
       contents: read
       id-token: write  # Required when switching to WIF
-
-    defaults:
-      run:
-        working-directory: ft-api
 
     steps:
       - name: Checkout
