@@ -1,0 +1,7 @@
+# ft-api runtime dependencies
+# Pin minor versions; patch updates are allowed via pip's default resolution.
+
+flask>=3.1,<4
+flask-cors>=5.0,<6
+firebase-admin>=6.5,<7
+gunicorn>=23.0,<24
