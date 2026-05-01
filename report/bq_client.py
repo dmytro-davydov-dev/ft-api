@@ -57,6 +57,7 @@ See also
 
 from __future__ import annotations
 
+import os
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -209,6 +210,48 @@ def build_report_params(
         bigquery.ScalarQueryParameter("fromDate", "DATE", window.from_date.isoformat()),
         bigquery.ScalarQueryParameter("toDate", "DATE", window.to_date.isoformat()),
     ]
+
+
+def bq_table(table_name: str) -> str:
+    """Return a backtick-quoted BigQuery table reference.
+
+    Uses the ``BQ_DATASET`` environment variable (default: ``flowterra_dev``).
+    The BigQuery Python client resolves the GCP project from Application Default
+    Credentials, so no project prefix is required here.
+
+    Args:
+        table_name: Unqualified table name (e.g. ``"location_events"``).
+
+    Returns:
+        String of the form `` `dataset.table_name` `` ready to embed in SQL.
+    """
+    dataset = os.environ.get("BQ_DATASET", "flowterra_dev")
+    return f"`{dataset}.{table_name}`"
+
+
+def build_site_filter(
+    site_id: str | None,
+) -> tuple[str, list["bigquery.ScalarQueryParameter"]]:
+    """Return an optional ``AND siteId = @siteId`` WHERE fragment and its parameter.
+
+    Args:
+        site_id: Caller-supplied site ID from the ``siteId`` query parameter,
+                 or ``None`` if the parameter was absent.
+
+    Returns:
+        A 2-tuple ``(sql_fragment, params)`` where *sql_fragment* is either an
+        empty string (no filter) or ``"AND siteId = @siteId"``, and *params* is
+        either an empty list or a one-element list containing a
+        :class:`google.cloud.bigquery.ScalarQueryParameter`.
+    """
+    if site_id is None:
+        return "", []
+    from google.cloud import bigquery  # noqa: PLC0415
+
+    return (
+        "AND siteId = @siteId",
+        [bigquery.ScalarQueryParameter("siteId", "STRING", site_id)],
+    )
 
 
 def build_raw_event_params(

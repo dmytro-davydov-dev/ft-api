@@ -210,9 +210,9 @@ class TestReportEndpointMissingDates:
     """Exit criterion 1: missing date params → 400."""
 
     ENDPOINTS = [
-        "/api/v1/customers/cust-abc/reporting/occupancy-area",
-        "/api/v1/customers/cust-abc/reporting/occupancy-floor",
-        "/api/v1/customers/cust-abc/reporting/utilisation-building",
+        "/api/v1/customers/cust-abc/reporting/occupancy/area",
+        "/api/v1/customers/cust-abc/reporting/occupancy/floor",
+        "/api/v1/customers/cust-abc/reporting/utilisation/building",
         "/api/v1/customers/cust-abc/reporting/people-day",
         "/api/v1/customers/cust-abc/reporting/alerts",
     ]
@@ -239,7 +239,7 @@ class TestReportEndpointMissingDates:
 class TestReportEndpointDateClamping:
     """Exit criterion 2: ranges > 90 days silently clamped; correct range in response."""
 
-    BASE = "/api/v1/customers/cust-abc/reporting/occupancy-area"
+    BASE = "/api/v1/customers/cust-abc/reporting/occupancy/area"
 
     def _mock_bq(self, rows=None):
         """Return a context manager that stubs BqClient.run_report."""
@@ -288,7 +288,7 @@ class TestReportEndpointTruncation:
     """Exit criterion 3: X-Truncated: true returned when row limit is hit."""
 
     BASE_PEOPLE = "/api/v1/customers/cust-abc/reporting/people-day"
-    BASE_ALERTS = "/api/v1/customers/cust-abc/reporting/alerts"
+    BASE_ALERTS  = "/api/v1/customers/cust-abc/reporting/alerts"
 
     def _mock_raw(self, rows, truncated):
         mock_client = MagicMock()
