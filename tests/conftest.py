@@ -1,8 +1,10 @@
 """Pytest fixtures for ft-api tests.
 
-Firebase Admin SDK is patched before the app module is imported so that
-tests never make real network calls.  Real Exception subclasses are used
-for Firebase error types so that middleware except-clauses match correctly.
+Firebase Admin SDK and google-cloud-bigquery are patched before any app
+module is imported so that tests never make real network calls.
+
+Real Exception subclasses are used for Firebase error types so that
+middleware except-clauses match correctly.
 """
 import sys
 from unittest.mock import MagicMock, patch
@@ -37,6 +39,36 @@ _firebase_mock._apps = {}  # satisfy the guard in create_app
 
 sys.modules["firebase_admin"] = _firebase_mock
 sys.modules["firebase_admin.auth"] = _auth_mock
+
+
+# ---------------------------------------------------------------------------
+# google-cloud-bigquery stub — prevents import errors when BqClient helpers
+# (build_report_params, build_site_filter, etc.) do their lazy
+# `from google.cloud import bigquery` inside route handlers.
+#
+# test_bq_client.py installs a richer stub with a real ScalarQueryParameter
+# class for direct bq_client unit tests; this session-level stub satisfies
+# the route-level tests that patch BqClient entirely.
+# ---------------------------------------------------------------------------
+
+def _make_bq_stub() -> MagicMock:
+    stub = MagicMock()
+
+    class _Param:
+        def __init__(self, name: str, kind: str, value):
+            self.name = name
+            self.kind = kind
+            self.value = value
+
+    stub.ScalarQueryParameter = _Param
+    stub.QueryJobConfig = MagicMock(side_effect=lambda **kw: MagicMock(**kw))
+    return stub
+
+
+_bq_stub = _make_bq_stub()
+sys.modules.setdefault("google", MagicMock())
+sys.modules.setdefault("google.cloud", MagicMock())
+sys.modules["google.cloud.bigquery"] = _bq_stub
 
 
 @pytest.fixture()
