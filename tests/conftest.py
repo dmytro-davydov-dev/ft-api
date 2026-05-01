@@ -46,7 +46,7 @@ def app():
     import importlib
 
     for mod in list(sys.modules.keys()):
-        if mod.startswith("routes") or mod == "app":
+        if mod.startswith("routes") or mod.startswith("report") or mod == "app":
             del sys.modules[mod]
 
     import app as app_module  # noqa: PLC0415

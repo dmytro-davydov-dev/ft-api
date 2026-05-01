@@ -3,8 +3,10 @@ from flask import Blueprint
 
 from .dashboard import dashboard_bp
 from .me import me_bp
+from .report import report_bp
 
 v1_bp = Blueprint("v1", __name__)
 
 v1_bp.register_blueprint(me_bp)
 v1_bp.register_blueprint(dashboard_bp)
+v1_bp.register_blueprint(report_bp)
