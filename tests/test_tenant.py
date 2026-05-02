@@ -226,3 +226,21 @@ class TestTenantSuccess:
     ):
         resp = tenant_client.get(GLOBAL_URL)
         assert resp.status_code == 401
+
+    def test_options_preflight_bypasses_auth(self, tenant_client):
+        """OPTIONS preflight must not be blocked by require_tenant.
+
+        The browser sends OPTIONS without an Authorization header before a
+        cross-origin request.  If require_tenant aborts with 401, flask-cors
+        never adds its CORS headers and the browser sees a CORS error instead.
+        """
+        resp = tenant_client.options(
+            "/api/v1/customers/tenant-abc/reports",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "Authorization",
+            },
+        )
+        # Must not be 401 — require_tenant must yield to flask-cors for preflights.
+        assert resp.status_code != 401

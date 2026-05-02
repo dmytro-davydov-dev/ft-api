@@ -51,6 +51,12 @@ def require_tenant(customer_id_param: str = "id"):
     """
 
     def _hook() -> None:
+        # OPTIONS preflight requests carry no Authorization header by design.
+        # flask-cors handles CORS headers via after_request; let it do so
+        # without this hook aborting first.
+        if request.method == "OPTIONS":
+            return
+
         # ------------------------------------------------------------------
         # Step 1: Verify Firebase JWT.
         # ------------------------------------------------------------------
