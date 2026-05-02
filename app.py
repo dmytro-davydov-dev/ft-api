@@ -5,8 +5,9 @@ Flask application factory.  Entry point for Cloud Run (via Gunicorn).
 import os
 
 import firebase_admin
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 
 from routes.health import health_bp
 from routes.v1 import v1_bp
@@ -42,6 +43,32 @@ def create_app() -> Flask:
     # Register blueprints.
     app.register_blueprint(health_bp)
     app.register_blueprint(v1_bp, url_prefix="/api/v1")
+
+    # ---------------------------------------------------------------------------
+    # Error handlers — return JSON for all errors so clients get machine-readable
+    # responses instead of HTML pages (important for BigQuery runtime errors).
+    # ---------------------------------------------------------------------------
+
+    @app.errorhandler(HTTPException)
+    def handle_http_error(exc: HTTPException):  # type: ignore[type-arg]
+        """Convert Werkzeug HTTP exceptions to JSON."""
+        return jsonify({"error": exc.name, "message": exc.description}), exc.code
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(exc: Exception):
+        """Catch-all for unhandled exceptions (e.g. BigQuery errors).
+
+        Logs the full traceback on the server and returns a generic 502 JSON
+        body to the client — avoids leaking internal details.
+        """
+        import logging  # noqa: PLC0415
+        import traceback  # noqa: PLC0415
+
+        logging.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
+        return (
+            jsonify({"error": "upstream_error", "message": "An upstream service error occurred."}),
+            502,
+        )
 
     return app
 
