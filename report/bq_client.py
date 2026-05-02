@@ -215,17 +215,22 @@ def build_report_params(
 def bq_table(table_name: str) -> str:
     """Return a backtick-quoted BigQuery table reference.
 
-    Uses the ``BQ_DATASET`` environment variable (default: ``flowterra_dev``).
-    The BigQuery Python client resolves the GCP project from Application Default
-    Credentials, so no project prefix is required here.
+    Uses ``BQ_PROJECT`` and ``BQ_DATASET`` environment variables.  When
+    ``BQ_PROJECT`` is set a fully-qualified three-part reference is returned
+    (``project.dataset.table``); otherwise the two-part form is used and the
+    project is resolved from Application Default Credentials by the client.
 
     Args:
         table_name: Unqualified table name (e.g. ``"location_events"``).
 
     Returns:
-        String of the form `` `dataset.table_name` `` ready to embed in SQL.
+        Backtick-quoted string ready to embed in SQL, e.g.
+        `` `flowterra-dev.flowterra_dev.location_events` ``.
     """
     dataset = os.environ.get("BQ_DATASET", "flowterra_dev")
+    project = os.environ.get("BQ_PROJECT")
+    if project:
+        return f"`{project}.{dataset}.{table_name}`"
     return f"`{dataset}.{table_name}`"
 
 
@@ -301,7 +306,9 @@ class BqClient:
         from google.cloud import bigquery  # noqa: PLC0415
 
         self._bq = bigquery
-        self._client = bigquery.Client(project=project)
+        # Explicit arg > BQ_PROJECT env var > ADC-resolved project (Cloud Run default).
+        resolved_project = project or os.environ.get("BQ_PROJECT") or None
+        self._client = bigquery.Client(project=resolved_project)
 
     # ------------------------------------------------------------------
     # Aggregate queries (R1–R3) — no row-limit required

@@ -64,9 +64,14 @@ def create_app() -> Flask:
         import logging  # noqa: PLC0415
         import traceback  # noqa: PLC0415
 
-        logging.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
+        exc_type = type(exc).__name__
+        logging.error("Unhandled exception [%s]: %s\n%s", exc_type, exc, traceback.format_exc())
         return (
-            jsonify({"error": "upstream_error", "message": "An upstream service error occurred."}),
+            jsonify({
+                "error": "upstream_error",
+                "type": exc_type,
+                "message": "An upstream service error occurred.",
+            }),
             502,
         )
 
