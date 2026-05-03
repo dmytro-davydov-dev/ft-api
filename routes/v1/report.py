@@ -66,17 +66,17 @@ report_bp.before_request(require_tenant())
 
 _SQL_OCCUPANCY_AREA = """\
 SELECT
-  area_id,
-  TIMESTAMP_TRUNC(event_ts, HOUR)       AS hour,
-  COUNT(DISTINCT tag_id)                AS tagCount
+  areaId,
+  TIMESTAMP_TRUNC(ts, HOUR)             AS hour,
+  COUNT(DISTINCT tagId)                 AS tagCount
 FROM {table}
 WHERE
-  DATE(event_ts) BETWEEN @fromDate AND @toDate
-  AND customer_id = @customerId
-  AND area_id IS NOT NULL
+  DATE(ts) BETWEEN @fromDate AND @toDate
+  AND customerId = @customerId
+  AND areaId IS NOT NULL
   {site_filter}
-GROUP BY area_id, hour
-ORDER BY hour, area_id
+GROUP BY areaId, hour
+ORDER BY hour, areaId
 """
 
 
@@ -101,12 +101,12 @@ def occupancy_area(id: str):  # noqa: A002
 _SQL_OCCUPANCY_FLOOR = """\
 SELECT
   floor,
-  TIMESTAMP_TRUNC(event_ts, HOUR)       AS hour,
-  COUNT(DISTINCT tag_id)                AS tagCount
+  TIMESTAMP_TRUNC(ts, HOUR)             AS hour,
+  COUNT(DISTINCT tagId)                 AS tagCount
 FROM {table}
 WHERE
-  DATE(event_ts) BETWEEN @fromDate AND @toDate
-  AND customer_id = @customerId
+  DATE(ts) BETWEEN @fromDate AND @toDate
+  AND customerId = @customerId
   AND floor IS NOT NULL
   {site_filter}
 GROUP BY floor, hour
@@ -135,12 +135,12 @@ def occupancy_floor(id: str):  # noqa: A002
 _SQL_UTILISATION_BUILDING = """\
 WITH hourly AS (
   SELECT
-    DATE(event_ts)                                        AS day,
-    COUNT(DISTINCT TIMESTAMP_TRUNC(event_ts, HOUR))       AS occupied_hours
+    DATE(ts)                                              AS day,
+    COUNT(DISTINCT TIMESTAMP_TRUNC(ts, HOUR))             AS occupied_hours
   FROM {table}
   WHERE
-    DATE(event_ts) BETWEEN @fromDate AND @toDate
-    AND customer_id = @customerId
+    DATE(ts) BETWEEN @fromDate AND @toDate
+    AND customerId = @customerId
     {site_filter}
   GROUP BY day
 )
@@ -174,18 +174,18 @@ def utilisation_building(id: str):  # noqa: A002
 
 _SQL_PEOPLE_DAY = """\
 SELECT
-  tag_id,
-  DATE(event_ts)                                            AS day,
-  MIN(event_ts)                                             AS first_seen,
-  MAX(event_ts)                                             AS last_seen,
-  TIMESTAMP_DIFF(MAX(event_ts), MIN(event_ts), MINUTE)      AS duration_min
+  tagId,
+  DATE(ts)                                                  AS day,
+  MIN(ts)                                                   AS first_seen,
+  MAX(ts)                                                   AS last_seen,
+  TIMESTAMP_DIFF(MAX(ts), MIN(ts), MINUTE)                  AS duration_min
 FROM {table}
 WHERE
-  DATE(event_ts) BETWEEN @fromDate AND @toDate
-  AND customer_id = @customerId
+  DATE(ts) BETWEEN @fromDate AND @toDate
+  AND customerId = @customerId
   {site_filter}
-GROUP BY tag_id, day
-ORDER BY day, tag_id
+GROUP BY tagId, day
+ORDER BY day, tagId
 LIMIT @limit
 """
 
@@ -214,18 +214,18 @@ def people_day(id: str):  # noqa: A002
 # R5 — Geofence alert history (raw events, LIMIT enforced)
 # ---------------------------------------------------------------------------
 
-# Note: geofence_events has no site_id column — siteId filter is not applied.
+# Note: geofence_events has no siteId column — siteId filter is not applied.
 _SQL_ALERTS = """\
 SELECT
-  rule_id,
-  tag_id,
-  event_type,
-  triggered_at
+  geofenceId,
+  tagId,
+  event,
+  ts
 FROM {table}
 WHERE
-  DATE(triggered_at) BETWEEN @fromDate AND @toDate
-  AND customer_id = @customerId
-ORDER BY triggered_at DESC
+  DATE(ts) BETWEEN @fromDate AND @toDate
+  AND customerId = @customerId
+ORDER BY ts DESC
 LIMIT @limit
 """
 
