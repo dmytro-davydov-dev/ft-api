@@ -237,7 +237,7 @@ def bq_table(table_name: str) -> str:
 def build_site_filter(
     site_id: str | None,
 ) -> tuple[str, list["bigquery.ScalarQueryParameter"]]:
-    """Return an optional ``AND siteId = @siteId`` WHERE fragment and its parameter.
+    """Return an optional ``AND site_id = @siteId`` WHERE fragment and its parameter.
 
     Args:
         site_id: Caller-supplied site ID from the ``siteId`` query parameter,
@@ -245,7 +245,7 @@ def build_site_filter(
 
     Returns:
         A 2-tuple ``(sql_fragment, params)`` where *sql_fragment* is either an
-        empty string (no filter) or ``"AND siteId = @siteId"``, and *params* is
+        empty string (no filter) or ``"AND site_id = @siteId"``, and *params* is
         either an empty list or a one-element list containing a
         :class:`google.cloud.bigquery.ScalarQueryParameter`.
     """
@@ -254,7 +254,7 @@ def build_site_filter(
     from google.cloud import bigquery  # noqa: PLC0415
 
     return (
-        "AND siteId = @siteId",
+        "AND site_id = @siteId",
         [bigquery.ScalarQueryParameter("siteId", "STRING", site_id)],
     )
 

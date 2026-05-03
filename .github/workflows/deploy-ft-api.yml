@@ -26,6 +26,10 @@ env:
   REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
   PROJECT_ID: ${{ vars.GCP_PROJECT_DEV || 'flowterra-dev' }}
   IMAGE: europe-west1-docker.pkg.dev/${{ vars.GCP_PROJECT_DEV || 'flowterra-dev' }}/flowterra/ft-api
+  # Service account that runs the Cloud Run workload — must match Terraform config.
+  # Without this, gcloud may fall back to the default Compute SA which lacks BQ perms.
+  FT_API_SA: flowterra-ft-api@${{ vars.GCP_PROJECT_DEV || 'flowterra-dev' }}.iam.gserviceaccount.com
+  BQ_DATASET: flowterra_dev
 
 jobs:
   deploy:
@@ -79,6 +83,8 @@ jobs:
             --project "${{ env.PROJECT_ID }}" \
             --region "${{ env.REGION }}" \
             --platform managed \
+            --service-account "${{ env.FT_API_SA }}" \
+            --set-env-vars "BQ_PROJECT=${{ env.PROJECT_ID }},BQ_DATASET=${{ env.BQ_DATASET }}" \
             --cpu 1 \
             --memory 512Mi \
             --min-instances 0 \
