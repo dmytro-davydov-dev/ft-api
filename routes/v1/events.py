@@ -57,14 +57,13 @@ events_bp.before_request(require_tenant())
 _SQL_EVENTS = """\
 SELECT
   event_ts,
+  ingested_at,
   tag_id,
   gateway_id,
   area_id,
-  zone_id,
   floor,
   site_id,
-  rssi,
-  battery_pct
+  rssi
 FROM {table}
 WHERE
   DATE(event_ts) BETWEEN @fromDate AND @toDate

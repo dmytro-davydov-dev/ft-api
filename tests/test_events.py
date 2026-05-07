@@ -6,7 +6,7 @@ Exit criteria:
   3. Partition pruning enforced: missing date params → 400.
 
 Additional coverage:
-  - Row fields: event_ts, tag_id, gateway_id, area_id, zone_id, floor, site_id, rssi, battery_pct.
+  - Row fields: event_ts, ingested_at, tag_id, gateway_id, area_id, floor, site_id, rssi.
   - run_raw_events called (raw-event endpoint with LIMIT).
   - SQL uses @customerId, @fromDate, @toDate, @limit placeholders (never literals).
   - siteId filter applied when supplied; absent when not.
@@ -35,37 +35,34 @@ _VALID_CLAIM = {"uid": "user-1", "customerId": "cust-abc"}
 
 _SEEDED_ROWS = [
     {
-        "event_ts": "2026-05-05T10:01:00+00:00",
-        "tag_id": "tag-001",
-        "gateway_id": "gw-floor1-a",
-        "area_id": "zone-open-plan",
-        "zone_id": "zone-open-plan",
-        "floor": 1,
-        "site_id": "site-hq-pilot",
-        "rssi": -65,
-        "battery_pct": 82,
+        "event_ts":    "2026-05-05T10:01:00+00:00",
+        "ingested_at": "2026-05-05T10:01:01+00:00",
+        "tag_id":      "tag-001",
+        "gateway_id":  "gw-floor1-a",
+        "area_id":     "zone-open-plan",
+        "floor":       1,
+        "site_id":     "site-hq-pilot",
+        "rssi":        -65,
     },
     {
-        "event_ts": "2026-05-05T10:00:30+00:00",
-        "tag_id": "tag-002",
-        "gateway_id": "gw-floor1-b",
-        "area_id": "zone-reception",
-        "zone_id": "zone-reception",
-        "floor": 1,
-        "site_id": "site-hq-pilot",
-        "rssi": -72,
-        "battery_pct": 55,
+        "event_ts":    "2026-05-05T10:00:30+00:00",
+        "ingested_at": "2026-05-05T10:00:31+00:00",
+        "tag_id":      "tag-002",
+        "gateway_id":  "gw-floor1-b",
+        "area_id":     "zone-reception",
+        "floor":       1,
+        "site_id":     "site-hq-pilot",
+        "rssi":        -72,
     },
     {
-        "event_ts": "2026-05-05T10:00:00+00:00",
-        "tag_id": "tag-003",
-        "gateway_id": "gw-floor2-a",
-        "area_id": "zone-floor2-open",
-        "zone_id": "zone-floor2-open",
-        "floor": 2,
-        "site_id": "site-hq-pilot",
-        "rssi": -80,
-        "battery_pct": None,
+        "event_ts":    "2026-05-05T10:00:00+00:00",
+        "ingested_at": "2026-05-05T10:00:01+00:00",
+        "tag_id":      "tag-003",
+        "gateway_id":  "gw-floor2-a",
+        "area_id":     "zone-floor2-open",
+        "floor":       2,
+        "site_id":     "site-hq-pilot",
+        "rssi":        -80,
     },
 ]
 
