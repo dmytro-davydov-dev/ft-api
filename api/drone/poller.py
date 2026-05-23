@@ -72,13 +72,40 @@ def _handle_completed(db, capture_id: str, odm_task_id: str) -> None:
     bucket = os.environ.get("GCS_DRONE_BUCKET", "flowterra-drone-dev")
     gcs_prefix = f"captures/{capture_id}/processed/"
 
-    db.table("captures").update({
-        "status": "tiling",
-        "tiles_gcs_prefix": gcs_prefix,
-    }).eq("id", capture_id).execute()
+    gsd_cm = _extract_gsd(odm_task_id)
+    update_payload: dict = {"status": "tiling", "tiles_gcs_prefix": gcs_prefix}
+    if gsd_cm is not None:
+        # Merge gsd_cm into metadata without overwriting existing keys.
+        cap = db.table("captures").select("metadata").eq("id", capture_id).execute()
+        existing_meta = (cap.data[0].get("metadata") or {}) if cap.data else {}
+        update_payload["metadata"] = {**existing_meta, "gsd_cm": gsd_cm}
 
-    logger.info("Poller: capture %s completed → tiling; triggering PotreeConverter", capture_id)
+    db.table("captures").update(update_payload).eq("id", capture_id).execute()
+
+    logger.info("Poller: capture %s completed → tiling; gsd_cm=%s; triggering PotreeConverter", capture_id, gsd_cm)
     _trigger_potree_converter(capture_id, odm_task_id, bucket, gcs_prefix)
+
+
+def _extract_gsd(odm_task_id: str) -> float | None:
+    """Fetch ODM task output and extract GSD in cm/pixel.
+
+    Returns None if the report is unavailable or the field is missing.
+    """
+    base_url = os.environ.get("NODE_ODM_URL", "http://flowterra-nodeodm-vm:3000").rstrip("/")
+    report_url = f"{base_url}/task/{odm_task_id}/download/odm_report/report.json"
+    try:
+        resp = requests.get(report_url, timeout=10)
+        if resp.status_code != 200:
+            logger.warning("Poller: ODM report not available for task %s (status %s)", odm_task_id, resp.status_code)
+            return None
+        data = resp.json()
+        gsd_m = data.get("gsd")
+        if gsd_m is None:
+            return None
+        return round(float(gsd_m) * 100, 2)
+    except Exception:  # noqa: BLE001
+        logger.warning("Poller: failed to fetch GSD for task %s", odm_task_id)
+        return None
 
 
 def _handle_failed(db, capture_id: str, capture: dict, error_msg: str) -> None:
