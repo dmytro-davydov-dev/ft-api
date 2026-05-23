@@ -1,11 +1,14 @@
 """Pytest fixtures for ft-api tests.
 
-Firebase Admin SDK and google-cloud-bigquery are patched before any app
-module is imported so that tests never make real network calls.
-
-Real Exception subclasses are used for Firebase error types so that
-middleware except-clauses match correctly.
+DISABLE_ODM_POLLER is set before any import so the background APScheduler
+thread is never started during the test suite.
 """
+import os
+os.environ.setdefault("DISABLE_ODM_POLLER", "1")
+os.environ.setdefault("GCS_DRONE_BUCKET", "test-drone-bucket")
+os.environ.setdefault("SUPABASE_URL", "http://localhost:54321")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "test-key")
+
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -69,6 +72,19 @@ _bq_stub = _make_bq_stub()
 sys.modules.setdefault("google", MagicMock())
 sys.modules.setdefault("google.cloud", MagicMock())
 sys.modules["google.cloud.bigquery"] = _bq_stub
+sys.modules["google.cloud.storage"] = MagicMock()
+
+# supabase stub — prevents import errors; tests patch get_supabase_client directly
+sys.modules.setdefault("supabase", MagicMock())
+sys.modules.setdefault("supabase.client", MagicMock())
+
+# apscheduler stub
+sys.modules.setdefault("apscheduler", MagicMock())
+sys.modules.setdefault("apscheduler.schedulers", MagicMock())
+sys.modules.setdefault("apscheduler.schedulers.background", MagicMock())
+
+# requests stub
+sys.modules.setdefault("requests", MagicMock())
 
 
 @pytest.fixture()
@@ -78,7 +94,7 @@ def app():
     import importlib
 
     for mod in list(sys.modules.keys()):
-        if mod.startswith("routes") or mod.startswith("report") or mod == "app":
+        if mod.startswith("routes") or mod.startswith("report") or mod.startswith("api") or mod == "app":
             del sys.modules[mod]
 
     import app as app_module  # noqa: PLC0415
