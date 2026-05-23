@@ -2,7 +2,7 @@
 
 Primary REST API for the Flowterra platform. A single Flask service deployed on Google Cloud Run — the backend entry point for all client-initiated requests from ft-web-app.
 
-Handles authentication, tenant isolation, and BigQuery-backed analytics reporting. All routes are scoped to a verified `customerId` tenant; cross-tenant data access is not possible by design.
+Handles authentication, tenant isolation, BigQuery-backed analytics reporting, and drone 3D mapping (Phase 5). All routes are scoped to a verified `customerId` tenant; cross-tenant data access is not possible by design.
 
 ## Stack
 
@@ -10,7 +10,7 @@ Handles authentication, tenant isolation, and BigQuery-backed analytics reportin
 - **Framework:** Flask
 - **Deployment:** Cloud Run (scale-to-zero, `min=0 max=5`)
 - **Auth:** Firebase Admin SDK (JWT verification)
-- **Data:** Firestore (operational), BigQuery (analytics/reports)
+- **Data:** Firestore (operational), BigQuery (analytics/reports), Supabase PostgreSQL (drone captures)
 - **Secrets:** GCP Secret Manager
 - **CI/CD:** GitHub Actions → `gcloud run deploy`
 
@@ -60,3 +60,4 @@ All tests mock the Firebase Admin SDK — no real GCP calls are made.
 | Topic | Doc |
 |---|---|
 | Authentication & tenant isolation | [documentation/auth.md](documentation/auth.md) |
+| Drone 3D mapping API (Phase 5) | [documentation/drone-api.md](documentation/drone-api.md) |
