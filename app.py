@@ -44,6 +44,12 @@ def create_app() -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(v1_bp, url_prefix="/api/v1")
 
+    # Start ODM background poller (no-op if apscheduler not installed or
+    # DISABLE_ODM_POLLER env var is set, e.g. during tests).
+    if not os.environ.get("DISABLE_ODM_POLLER"):
+        from api.drone.poller import start_poller  # noqa: PLC0415
+        start_poller()
+
     # ---------------------------------------------------------------------------
     # Error handlers — return JSON for all errors so clients get machine-readable
     # responses instead of HTML pages (important for BigQuery runtime errors).

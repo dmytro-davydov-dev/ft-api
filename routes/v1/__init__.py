@@ -10,6 +10,8 @@ from .report import report_bp
 from .sites import sites_bp
 from .people import people_bp
 from .tags import tags_bp
+from api.drone.sites import drone_sites_bp
+from api.drone.captures import drone_captures_bp
 
 v1_bp = Blueprint("v1", __name__)
 
@@ -22,3 +24,5 @@ v1_bp.register_blueprint(people_bp)
 v1_bp.register_blueprint(report_bp)
 v1_bp.register_blueprint(sites_bp)
 v1_bp.register_blueprint(tags_bp)
+v1_bp.register_blueprint(drone_sites_bp)
+v1_bp.register_blueprint(drone_captures_bp)
