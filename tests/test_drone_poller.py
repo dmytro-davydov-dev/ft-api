@@ -125,6 +125,72 @@ def test_actionable_error_passthrough():
     assert _actionable_error("odm_memory_error") == "odm_memory_error"
 
 
+def test_extract_gsd_returns_cm_value():
+    """_extract_gsd converts ODM report GSD from metres to cm/pixel."""
+    import importlib  # noqa: PLC0415
+    import api.drone.poller as poller_mod  # noqa: PLC0415
+    importlib.reload(poller_mod)
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"gsd": 0.035}  # 3.5 cm/px
+
+    with patch("api.drone.poller.requests.get", return_value=mock_resp):
+        result = poller_mod._extract_gsd("odm-task-1")
+
+    assert result == pytest.approx(3.5, rel=1e-3)
+
+
+def test_extract_gsd_returns_none_when_report_missing():
+    """_extract_gsd returns None gracefully when the report endpoint is 404."""
+    import importlib  # noqa: PLC0415
+    import api.drone.poller as poller_mod  # noqa: PLC0415
+    importlib.reload(poller_mod)
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+
+    with patch("api.drone.poller.requests.get", return_value=mock_resp):
+        result = poller_mod._extract_gsd("odm-task-2")
+
+    assert result is None
+
+
+def test_extract_gsd_returns_none_when_field_missing():
+    """_extract_gsd returns None when 'gsd' key is absent in the report."""
+    import importlib  # noqa: PLC0415
+    import api.drone.poller as poller_mod  # noqa: PLC0415
+    importlib.reload(poller_mod)
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"other_field": 42}
+
+    with patch("api.drone.poller.requests.get", return_value=mock_resp):
+        result = poller_mod._extract_gsd("odm-task-3")
+
+    assert result is None
+
+
+def test_poll_once_completed_stores_gsd():
+    """_handle_completed stores gsd_cm in capture metadata when available."""
+    db = _make_db(processing_caps=[_PROCESSING_CAP])
+    odm_status = {"status": "completed", "progress": 100, "error": ""}
+
+    with patch("api.drone.poller.get_supabase_client", return_value=db), \
+         patch("api.drone.poller.nodeodm_client.get_task_status", return_value=odm_status), \
+         patch("api.drone.poller._trigger_potree_converter"), \
+         patch("api.drone.poller._extract_gsd", return_value=2.5) as mock_gsd:
+        from api.drone.poller import poll_once  # noqa: PLC0415
+        poll_once()
+
+    mock_gsd.assert_called_once()
+    # At least one update call should carry gsd_cm in metadata
+    update_calls = db.table.return_value.update.call_args_list
+    meta_updates = [c[0][0].get("metadata") for c in update_calls if c[0][0].get("metadata")]
+    assert any(m.get("gsd_cm") == 2.5 for m in meta_updates)
+
+
 def test_start_poller_no_apscheduler(caplog):
     import sys  # noqa: PLC0415
     # Simulate APScheduler not installed
