@@ -108,6 +108,24 @@ Photos are uploaded directly from the browser — ft-api never handles binary da
 
 ---
 
+### DELETE /api/v1/drone/sites/{siteId}/captures/{captureId}
+
+Delete a capture and all associated GCS objects.
+
+**Response 204** — No Content
+
+**Backend logic:**
+1. Verify capture belongs to the authenticated tenant (RLS enforced)
+2. List and delete all GCS objects under `captures/{captureId}/raw/`, `captures/{captureId}/processed/`, `captures/{captureId}/tiles/`
+3. Delete the `captures` row from Supabase
+4. GCS delete failures are logged but do not fail the request
+
+**Errors:**
+- `404` — capture not found or cross-tenant access attempt
+- `409` — capture is currently in `processing` or `tiling` state (pipeline running)
+
+---
+
 ### POST /api/v1/drone/sites/{siteId}/captures/{captureId}/process
 
 Trigger ODM processing. Call after all photo uploads are confirmed.
