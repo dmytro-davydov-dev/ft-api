@@ -1,10 +1,11 @@
 """api/drone/captures.py — drone capture lifecycle endpoints.
 
 Routes (registered at /api/v1/drone/sites/<siteId>/captures):
-  GET  /api/v1/drone/sites/<siteId>/captures                       — list captures (status, order)
-  POST /api/v1/drone/sites/<siteId>/captures                       — create capture + upload URLs
-  POST /api/v1/drone/sites/<siteId>/captures/<captureId>/process   — trigger ODM processing
-  GET  /api/v1/drone/sites/<siteId>/captures/<captureId>           — status + tile URL
+  GET    /api/v1/drone/sites/<siteId>/captures                       — list captures (status, order)
+  POST   /api/v1/drone/sites/<siteId>/captures                       — create capture + upload URLs
+  GET    /api/v1/drone/sites/<siteId>/captures/<captureId>           — status + tile URL
+  DELETE /api/v1/drone/sites/<siteId>/captures/<captureId>           — delete capture
+  POST   /api/v1/drone/sites/<siteId>/captures/<captureId>/process   — trigger ODM processing
 """
 from __future__ import annotations
 
@@ -113,6 +114,18 @@ def create_capture(site_id: str):
         "status": "pending",
         "upload_urls": upload_urls,
     }), 201
+
+
+@drone_captures_bp.delete("/<capture_id>")
+@require_auth
+def delete_capture(site_id: str, capture_id: str):
+    """DELETE /api/v1/drone/sites/<site_id>/captures/<capture_id> — delete capture."""
+    db = get_supabase_client()
+    _get_site_or_404(db, site_id, g.customer_id)
+    _get_capture_or_404(db, capture_id, site_id)
+
+    db.table("captures").delete().eq("id", capture_id).execute()
+    return jsonify({"deleted": True}), 200
 
 
 @drone_captures_bp.post("/<capture_id>/process")

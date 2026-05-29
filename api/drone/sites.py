@@ -3,6 +3,7 @@
 Routes (Blueprint prefix /drone/sites, registered at /api/v1/drone/sites):
   POST   /api/v1/drone/sites          — create a new site
   GET    /api/v1/drone/sites          — list all sites for tenant
+  GET    /api/v1/drone/sites/<id>     — get a single site
   DELETE /api/v1/drone/sites/<id>     — delete site (409 if captures exist)
 
 customerId is always from the Firebase JWT (g.customer_id), never the body.
@@ -70,6 +71,28 @@ def list_sites():
             "last_capture_at": last_capture_at,
         })
     return jsonify({"sites": sites}), 200
+
+
+@drone_sites_bp.get("/<site_id>")
+@require_auth
+def get_site(site_id: str):
+    """GET /api/v1/drone/sites/<site_id> — get a single site for the tenant."""
+    db = get_supabase_client()
+    site = _get_site_or_404(db, site_id, g.customer_id)
+    captures = (
+        db.table("captures")
+        .select("id, captured_at")
+        .eq("site_id", site["id"])
+        .order("captured_at", desc=True)
+        .execute()
+    )
+    last_capture_at = captures.data[0].get("captured_at") if captures.data else None
+    return jsonify({
+        "site_id": site["id"],
+        "name": site["name"],
+        "capture_count": len(captures.data),
+        "last_capture_at": last_capture_at,
+    }), 200
 
 
 @drone_sites_bp.delete("/<site_id>")
