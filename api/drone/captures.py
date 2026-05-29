@@ -1,6 +1,7 @@
 """api/drone/captures.py — drone capture lifecycle endpoints.
 
 Routes (registered at /api/v1/drone/sites/<siteId>/captures):
+  GET  /api/v1/drone/sites/<siteId>/captures                       — list captures (status, order)
   POST /api/v1/drone/sites/<siteId>/captures                       — create capture + upload URLs
   POST /api/v1/drone/sites/<siteId>/captures/<captureId>/process   — trigger ODM processing
   GET  /api/v1/drone/sites/<siteId>/captures/<captureId>           — status + tile URL
@@ -19,6 +20,59 @@ drone_captures_bp = Blueprint(
 
 _MAX_PHOTO_COUNT = 500
 _DEFAULT_ODM_OPTIONS = {"feature_quality": "medium", "pc_quality": "medium", "mesh": False}
+
+
+@drone_captures_bp.get("")
+@require_auth
+def list_captures(site_id: str):
+    """GET /api/v1/drone/sites/<site_id>/captures — list captures.
+
+    Query params:
+      status — filter by capture status (e.g. "ready", "processing")
+      order  — sort field + direction, format "field:asc|desc" (e.g. "captured_at:desc")
+    """
+    db = get_supabase_client()
+    _get_site_or_404(db, site_id, g.customer_id)
+
+    status_filter = request.args.get("status")
+    order_param = request.args.get("order", "captured_at:desc")
+
+    query = (
+        db.table("captures")
+        .select("*")
+        .eq("site_id", site_id)
+        .eq("customer_id", g.customer_id)
+    )
+
+    if status_filter:
+        query = query.eq("status", status_filter)
+
+    # Parse "field:asc|desc" — default ascending if direction missing/invalid
+    if ":" in order_param:
+        field, direction = order_param.split(":", 1)
+    else:
+        field, direction = order_param, "asc"
+    descending = direction.lower() == "desc"
+    query = query.order(field, desc=descending)
+
+    result = query.execute()
+
+    captures = []
+    for row in result.data:
+        tiles = None
+        if row["status"] == "ready":
+            tiles = storage.tiles_url(row["id"])
+        captures.append({
+            "capture_id": row["id"],
+            "site_id": row["site_id"],
+            "captured_at": row["captured_at"],
+            "status": row["status"],
+            "photo_count": row["photo_count"],
+            "tiles_url": tiles,
+            "metadata": row.get("metadata") or {},
+        })
+
+    return jsonify({"captures": captures}), 200
 
 
 @drone_captures_bp.post("")
