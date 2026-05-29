@@ -5,9 +5,12 @@
 #
 # Prerequisites (set in GitHub → Settings → Secrets / Variables):
 #   Secrets:
-#     GCP_SA_KEY_DEV   — Service account JSON key with roles:
-#                        run.admin, artifactregistry.writer,
-#                        iam.serviceAccountUser, storage.admin
+#     GCP_SA_KEY_DEV          — Service account JSON key with roles:
+#                               run.admin, artifactregistry.writer,
+#                               iam.serviceAccountUser, storage.admin
+#     SUPABASE_URL            — Supabase project URL (https://xxx.supabase.co)
+#     SUPABASE_SERVICE_ROLE_KEY — Supabase service-role key (bypasses RLS)
+#     GCS_DRONE_BUCKET        — GCS bucket name for drone uploads (flowterra-drone-dev)
 #   Variables:
 #     GCP_PROJECT_DEV  — flowterra-dev
 #     GCP_REGION       — europe-west1
@@ -84,7 +87,8 @@ jobs:
             --region "${{ env.REGION }}" \
             --platform managed \
             --service-account "${{ env.FT_API_SA }}" \
-            --set-env-vars "BQ_PROJECT=${{ env.PROJECT_ID }},BQ_DATASET=${{ env.BQ_DATASET }}" \
+            --set-env-vars "BQ_PROJECT=${{ env.PROJECT_ID }},BQ_DATASET=${{ env.BQ_DATASET }},GCS_DRONE_BUCKET=flowterra-drone-dev" \
+            --set-secrets "SUPABASE_URL=SUPABASE_URL:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest" \
             --cpu 1 \
             --memory 512Mi \
             --min-instances 0 \
