@@ -38,5 +38,5 @@ def generate_upload_urls(capture_id: str, filenames: list[str]) -> list[dict]:
 
 def tiles_url(capture_id: str) -> str:
     """Return the public GCS URL prefix for Potree tiles."""
-    bucket_name = os.environ["GCS_DRONE_BUCKET"]
+    bucket_name = os.environ.get("GCS_DRONE_BUCKET", "flowterra-drone-dev")
     return f"https://storage.googleapis.com/{bucket_name}/captures/{capture_id}/tiles/"

@@ -9,7 +9,11 @@ Routes (registered at /api/v1/drone/sites/<siteId>/captures):
 """
 from __future__ import annotations
 
+import logging
+
 from flask import Blueprint, abort, g, jsonify, request
+
+logger = logging.getLogger(__name__)
 
 from api.db.supabase_client import get_supabase_client
 from api.drone import nodeodm_client, storage
@@ -33,36 +37,44 @@ def list_captures(site_id: str):
       order  — sort field + direction, format "field:asc|desc" (e.g. "captured_at:desc")
     """
     db = get_supabase_client()
-    _get_site_or_404(db, site_id, g.customer_id)
 
-    status_filter = request.args.get("status")
-    order_param = request.args.get("order", "captured_at:desc")
+    try:
+        _get_site_or_404(db, site_id, g.customer_id)
 
-    query = (
-        db.table("captures")
-        .select("*")
-        .eq("site_id", site_id)
-        .eq("customer_id", g.customer_id)
-    )
+        status_filter = request.args.get("status")
+        order_param = request.args.get("order", "captured_at:desc")
 
-    if status_filter:
-        query = query.eq("status", status_filter)
+        query = (
+            db.table("captures")
+            .select("*")
+            .eq("site_id", site_id)
+            .eq("customer_id", g.customer_id)
+        )
 
-    # Parse "field:asc|desc" — default ascending if direction missing/invalid
-    if ":" in order_param:
-        field, direction = order_param.split(":", 1)
-    else:
-        field, direction = order_param, "asc"
-    descending = direction.lower() == "desc"
-    query = query.order(field, desc=descending)
+        if status_filter:
+            query = query.eq("status", status_filter)
 
-    result = query.execute()
+        # Parse "field:asc|desc" — default ascending if direction missing/invalid
+        if ":" in order_param:
+            field, direction = order_param.split(":", 1)
+        else:
+            field, direction = order_param, "asc"
+        descending = direction.lower() == "desc"
+        query = query.order(field, desc=descending)
+
+        result = query.execute()
+    except Exception as exc:
+        logger.error("Supabase query failed in list_captures (%s): %s", type(exc).__name__, exc)
+        abort(503, description=f"Database unavailable: {type(exc).__name__}")
 
     captures = []
     for row in result.data:
         tiles = None
         if row["status"] == "ready":
-            tiles = storage.tiles_url(row["id"])
+            try:
+                tiles = storage.tiles_url(row["id"])
+            except Exception:
+                logger.exception("tiles_url failed for capture %s", row["id"])
         captures.append({
             "capture_id": row["id"],
             "site_id": row["site_id"],
@@ -177,7 +189,10 @@ def get_capture(site_id: str, capture_id: str):
 
     tiles = None
     if capture["status"] == "ready":
-        tiles = storage.tiles_url(capture_id)
+        try:
+            tiles = storage.tiles_url(capture_id)
+        except Exception:
+            logger.exception("tiles_url failed for capture %s", capture_id)
 
     return jsonify({
         "capture_id": capture["id"],
