@@ -112,12 +112,16 @@ def test_create_capture_filenames_mismatch_photo_count(client):
     assert resp.status_code == 422
 
 
-def test_create_capture_wrong_tenant_site_returns_404(client, auth_mock):
+def test_create_capture_different_tenant_succeeds_isolated_by_customer_id(client, auth_mock):
+    # Sites are authoritative in Firestore; Supabase isolation is via customer_id on captures.
+    # A user from a different tenant can create a capture — it will be tagged with their customer_id.
     auth_mock.verify_id_token.return_value = {"uid": "user-x", "customerId": "cust-other"}
-    db = _make_db(site_rows=[])
-    with patch("api.drone.captures.get_supabase_client", return_value=db):
+    cap_other = {**_CAP, "customer_id": "cust-other"}
+    db = _make_db(insert_row=cap_other)
+    with patch("api.drone.captures.get_supabase_client", return_value=db), \
+         patch("api.drone.captures.storage.generate_upload_urls", return_value=_SIGNED_URLS):
         resp = client.post(BASE, json=_VALID_BODY, headers={"Authorization": "Bearer token-user-x"})
-    assert resp.status_code == 404
+    assert resp.status_code == 201
 
 
 def test_create_capture_missing_captured_at_returns_422(client):

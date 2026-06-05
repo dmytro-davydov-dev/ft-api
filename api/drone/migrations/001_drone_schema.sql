@@ -1,9 +1,9 @@
 -- Phase 5: Drone 3D mapping schema
 -- Apply against Supabase dev project: supabase db push
 
--- sites
+-- sites — id is TEXT to match Firestore document IDs (e.g. "site-hq-pilot")
 CREATE TABLE IF NOT EXISTS sites (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id            TEXT PRIMARY KEY,
   customer_id   TEXT NOT NULL,
   name          TEXT NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS sites (
 -- captures
 CREATE TABLE IF NOT EXISTS captures (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  site_id          UUID NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  site_id          TEXT NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
   customer_id      TEXT NOT NULL,
   captured_at      TIMESTAMPTZ NOT NULL,
   photo_count      INTEGER NOT NULL,

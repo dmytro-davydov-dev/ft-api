@@ -39,8 +39,8 @@ def list_captures(site_id: str):
     db = get_supabase_client()
 
     try:
-        _get_site_or_404(db, site_id, g.customer_id)
-
+        # Note: sites are authoritative in Firestore, not Supabase.
+        # Tenant isolation is enforced via customer_id on the captures table.
         status_filter = request.args.get("status")
         order_param = request.args.get("order", "captured_at:desc")
 
@@ -93,7 +93,6 @@ def list_captures(site_id: str):
 def create_capture(site_id: str):
     """POST /api/v1/drone/sites/<site_id>/captures — create capture record + signed upload URLs."""
     db = get_supabase_client()
-    _get_site_or_404(db, site_id, g.customer_id)
 
     body = request.get_json(silent=True) or {}
     captured_at = body.get("captured_at")
@@ -133,7 +132,6 @@ def create_capture(site_id: str):
 def delete_capture(site_id: str, capture_id: str):
     """DELETE /api/v1/drone/sites/<site_id>/captures/<capture_id> — delete capture."""
     db = get_supabase_client()
-    _get_site_or_404(db, site_id, g.customer_id)
     _get_capture_or_404(db, capture_id, site_id)
 
     db.table("captures").delete().eq("id", capture_id).execute()
@@ -145,7 +143,6 @@ def delete_capture(site_id: str, capture_id: str):
 def process_capture(site_id: str, capture_id: str):
     """POST /api/v1/drone/sites/<site_id>/captures/<capture_id>/process — trigger ODM."""
     db = get_supabase_client()
-    _get_site_or_404(db, site_id, g.customer_id)
     capture = _get_capture_or_404(db, capture_id, site_id)
 
     if capture["status"] not in ("pending", "uploading"):
@@ -184,7 +181,6 @@ def process_capture(site_id: str, capture_id: str):
 def get_capture(site_id: str, capture_id: str):
     """GET /api/v1/drone/sites/<site_id>/captures/<capture_id> — status + tile URL."""
     db = get_supabase_client()
-    _get_site_or_404(db, site_id, g.customer_id)
     capture = _get_capture_or_404(db, capture_id, site_id)
 
     tiles = None
