@@ -23,6 +23,19 @@ drone_captures_bp = Blueprint(
     "drone_captures", __name__, url_prefix="/drone/sites/<site_id>/captures"
 )
 
+
+def _verify_site_owner(site_id: str, customer_id: str) -> None:
+    """Verify the site belongs to the customer via Firestore.
+
+    Sites are authoritative in Firestore under customers/{customerId}/sites/{siteId}.
+    Aborts 404 if the document does not exist.
+    This function is a thin wrapper so tests can patch it directly.
+    """
+    from firebase_admin import firestore as fs  # noqa: PLC0415
+    doc = fs.client().document(f"customers/{customer_id}/sites/{site_id}").get()
+    if not doc.exists:
+        abort(404, description="Site not found")
+
 _MAX_PHOTO_COUNT = 500
 _DEFAULT_ODM_OPTIONS = {"feature_quality": "medium", "pc_quality": "medium", "mesh": False}
 
@@ -92,6 +105,7 @@ def list_captures(site_id: str):
 @require_auth
 def create_capture(site_id: str):
     """POST /api/v1/drone/sites/<site_id>/captures — create capture record + signed upload URLs."""
+    _verify_site_owner(site_id, g.customer_id)
     db = get_supabase_client()
 
     body = request.get_json(silent=True) or {}
@@ -142,6 +156,7 @@ def delete_capture(site_id: str, capture_id: str):
 @require_auth
 def process_capture(site_id: str, capture_id: str):
     """POST /api/v1/drone/sites/<site_id>/captures/<capture_id>/process — trigger ODM."""
+    _verify_site_owner(site_id, g.customer_id)
     db = get_supabase_client()
     capture = _get_capture_or_404(db, capture_id, site_id)
 

@@ -50,7 +50,7 @@ GOOGLE_APPLICATION_CREDENTIALS=path/to/sa.json flask --app app run --port 8080
 ## Tests
 
 ```bash
-pytest
+pytest tests/ -q
 ```
 
 All tests mock the Firebase Admin SDK — no real GCP calls are made.

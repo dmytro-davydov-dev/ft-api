@@ -113,7 +113,9 @@ def test_tenant_a_cannot_read_tenant_b_site(client, auth_as_tenant_a):
 def test_tenant_a_cannot_create_capture_on_tenant_b_site(client, auth_as_tenant_a):
     db = _make_db_empty()
     payload = {"captured_at": "2026-05-01T00:00:00Z", "photo_count": 1, "filenames": ["x.jpg"]}
-    with patch("api.drone.captures.get_supabase_client", return_value=db):
+    from flask import abort as flask_abort  # noqa: PLC0415
+    with patch("api.drone.captures.get_supabase_client", return_value=db), \
+         patch("api.drone.captures._verify_site_owner", side_effect=lambda *_: flask_abort(404)):
         resp = client.post(BASE_CAPS_B, json=payload, headers=_header(TENANT_A))
     assert resp.status_code == 404
 

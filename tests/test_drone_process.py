@@ -112,7 +112,9 @@ def test_process_wrong_status_returns_409(client):
 def test_process_wrong_tenant_returns_404(client, auth_mock):
     auth_mock.verify_id_token.return_value = {"uid": "user-x", "customerId": "cust-other"}
     db = _make_db(site_rows=[])
-    with patch("api.drone.captures.get_supabase_client", return_value=db):
+    from flask import abort as flask_abort  # noqa: PLC0415
+    with patch("api.drone.captures.get_supabase_client", return_value=db), \
+         patch("api.drone.captures._verify_site_owner", side_effect=lambda *_: flask_abort(404)):
         resp = client.post(BASE, json={}, headers={"Authorization": "Bearer token-user-x"})
     assert resp.status_code == 404
 
