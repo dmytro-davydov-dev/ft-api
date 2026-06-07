@@ -1,11 +1,17 @@
 """GET /api/v1/customers/<customer_id>/sites — site + floor config.
 
-Phase 4: returns static config seeded from the pilot site JSON.
-Phase 6+: replace with Firestore reads so operators can manage sites via UI.
+Phase 4: returns static config seeded from the pilot site JSON,
+         merged with any mutable fields (sitePhotos) stored in Firestore.
+Phase 6+: replace with full Firestore reads so operators can manage sites via UI.
 """
+import logging
+
+from firebase_admin import firestore as fs
 from flask import Blueprint, g, jsonify
 
 from auth.middleware import require_auth
+
+logger = logging.getLogger(__name__)
 
 sites_bp = Blueprint("sites", __name__)
 
@@ -49,6 +55,26 @@ _PILOT_SITE = {
 }
 
 
+def _merge_firestore_fields(customer_id: str, site: dict) -> dict:
+    """Overlay mutable fields from Firestore onto the static site config.
+
+    Reads customers/{customerId}/sites/{siteId}. If the document doesn't exist
+    (backend-seeded site never written to Firestore yet) the static config is
+    returned unchanged.
+    """
+    try:
+        doc = fs.client().document(
+            f"customers/{customer_id}/sites/{site['id']}"
+        ).get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            if "sitePhotos" in data:
+                site = {**site, "sitePhotos": data["sitePhotos"]}
+    except Exception:  # noqa: BLE001
+        logger.warning("Firestore read failed for site %s — returning static config", site["id"])
+    return site
+
+
 @sites_bp.get("/customers/<customer_id>/sites")
 @require_auth
 def list_sites(customer_id: str):
@@ -56,4 +82,5 @@ def list_sites(customer_id: str):
     if customer_id != g.customer_id:
         return jsonify({"error": "Forbidden"}), 403
 
-    return jsonify({"customerId": customer_id, "sites": [_PILOT_SITE]})
+    site = _merge_firestore_fields(customer_id, _PILOT_SITE)
+    return jsonify({"customerId": customer_id, "sites": [site]})
