@@ -59,19 +59,22 @@ def _merge_firestore_fields(customer_id: str, site: dict) -> dict:
     """Overlay mutable fields from Firestore onto the static site config.
 
     Reads customers/{customerId}/sites/{siteId}. If the document doesn't exist
-    (backend-seeded site never written to Firestore yet) the static config is
-    returned unchanged.
+    (backend-seeded site never written to Firestore yet), bootstraps it with
+    the static config so subsequent client writes always use update, not create.
+    This avoids Firestore create-rule validation failures on the first photo upload.
     """
     try:
-        doc = fs.client().document(
-            f"customers/{customer_id}/sites/{site['id']}"
-        ).get()
+        ref = fs.client().document(f"customers/{customer_id}/sites/{site['id']}")
+        doc = ref.get()
         if doc.exists:
             data = doc.to_dict() or {}
             if "sitePhotos" in data:
                 site = {**site, "sitePhotos": data["sitePhotos"]}
+        else:
+            # Bootstrap the document so clients always hit `update`, not `create`.
+            ref.set({"name": site["name"]}, merge=True)
     except Exception:  # noqa: BLE001
-        logger.warning("Firestore read failed for site %s — returning static config", site["id"])
+        logger.warning("Firestore read/seed failed for site %s — returning static config", site["id"])
     return site
 
 
